@@ -8,8 +8,10 @@ truly shared.
 
 **Priority is Quality over File Size**
 
-I welcome any and all suggestions to improve upon compression ratio without 
-sacrificing quality!
+ I'm a fan of the 80/20 rule so bear in mind that the vast majority of this 
+ has been vibe-coded so I could knock it out over a weekend. I welcome any 
+ and all suggestions to improve upon compression ratio without sacrificing 
+ quality!
 
 This repo is the configuration directory contents from
 `%AppData%\HandBrake` (Windows). It is published so other people building
