@@ -65,6 +65,11 @@ SHARED = {
         "copy:mp3",
         "copy:flac",
         "copy:opus",
+        # PCM passthru added in HandBrake 1.11.0 — lets BD/HD-DVD LPCM tracks
+        # pass through losslessly instead of being dropped or re-encoded.
+        "copy:pcm",
+        # ALAC passthru added in HandBrake 1.9.0 — rare on BD but harmless.
+        "copy:alac",
     ],
     "AudioEncoderFallback": "none",
     # ["eng"] + behavior "all" => pass through every English audio track on the
@@ -194,13 +199,20 @@ def make_preset(name, *, crop_mode, tune, rf, default=False, description=""):
     # dark regions aggressively, producing visible posterization on heavily-
     # graded shadows (confirmed on Dune Part 2 cave/cloak scenes vs source).
     #   aq-mode=3      variance AQ with explicit dark-region bias
-    #   aq-strength    1.0 (default) is fine; 1.1 if banding persists
-    #   psy-rdoq=2.0   stronger than tune=grain default; preserves shadow
-    #                  micro-texture which perceptually masks any residual
-    #                  banding. Costs ~5% bitrate, no encode-time penalty.
-    # tune=grain already sets psy-rd=2.0 and no-strong-intra-smoothing, so
-    # we don't restate those here.
-    p["VideoOptionExtra"] = "aq-mode=3:psy-rdoq=2.0"
+    #
+    # We deliberately do NOT override psy-rdoq here:
+    #   * tune=grain sets psy-rdoq=10.0 by default — strong grain preservation.
+    #     Overriding it lower would silently weaken grain retention without
+    #     any benefit to the banding fix (which comes from aq-mode alone).
+    #   * tune=animation does not set psy-rdoq, leaving x265's per-preset
+    #     default. We accept that default rather than tune it blindly.
+    #
+    # x265 docs warn that overriding aq-mode while tune=grain is active
+    # carries a documented strobing risk on heavy-grain static shots, but
+    # tune=grain's --rc-grain ratecontrol remains active and empirically
+    # contains it on this content library. The banding fix on Dune-class
+    # shadow gradients is the higher priority.
+    p["VideoOptionExtra"] = "aq-mode=3"
     p["Default"] = default
     return p
 
@@ -487,9 +499,12 @@ def main(argv=None) -> int:
           f"{len(custom['ChildrenArray'])})")
 
     if args.set_default and settings_path.exists():
-        if not args.no_backup:
-            bak = backup(settings_path)
-            print(f"Backed up settings.json \u2192 {bak.name}")
+        # Note: settings.json is intentionally NOT backed up. HandBrake
+        # rewrites the entire file on every shutdown (run counter, MRU paths,
+        # last-update-check timestamp, UI state), so any backup is stale
+        # within one session and restoring it would actively roll back state.
+        # The only field this script touches is defaultPreset (one line),
+        # trivially reversible by hand or by re-running with --set-default.
         s = json.loads(settings_path.read_text(encoding="utf-8-sig"))
         old_default = s.get("defaultPreset", "")
         s["defaultPreset"] = "BD Archive - Standard"

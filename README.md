@@ -201,8 +201,8 @@ These are the settings the `verify_bd_archive.py` audit enforces as
 identical across the entire set:
 
 - **Container:** MKV. Non-negotiable — needed for PGS subtitles and lossless audio passthru.
-- **Audio — primary track:** Auto Passthru for English. Allows DTS-HD MA, TrueHD (incl. Atmos), DTS, DTS:X (rides inside DTS-HD MA), LPCM, FLAC, AC3, E-AC3 to pass through bit-exact.
-- **Audio — secondary track:** AC3 5.1 @ 640 kbps as a compatibility fallback for clients that can't decode the lossless track.
+- **Audio — English tracks:** Auto Passthru for every English track on the source (main mix, commentary, descriptive audio). Allows DTS-HD MA, TrueHD (incl. Atmos), DTS, DTS:X (rides inside DTS-HD MA), LPCM (incl. PCM), FLAC, ALAC, AC3, E-AC3, AAC, MP2, MP3, Opus to pass through bit-exact.
+- **Audio — fallback:** none. `AudioEncoderFallback` is `none`, so any non-passthru-eligible source track is dropped rather than re-encoded. The primary playback chain (Apple TV 4K → Denon X3700H eARC) decodes every codec in the passthru list directly, so a fallback would only ever apply to exotic disc audio that does not exist in this library.
 - **Audio — other languages:** ignored.
 - **Subtitles:** Foreign Audio Search burns in *forced* subs only (Na'vi in Avatar, Chakobsa in Dune, German/French in Inglourious Basterds). All full English PGS tracks pass through as selectable, toggleable subtitle tracks.
 - **Chapters:** preserved from source.

@@ -50,6 +50,7 @@ keeper (~2 hr).
 | A2 | The Batman (2022) | ~00:02:30–00:07:30 (~1–4%) (opening crime scene) | Intentional heavy film grain, very low key lighting, dim warm interiors | Grain texture preserved (not smoothed into mush); no blocking in dark areas; red/orange light clean |
 | A3 | Joker (2019) | ~00:33:00–00:38:00 (~27–31%) (bathroom dance) | Red-dominant lighting, sustained close-ups on skin, slow contrast ramps | Skin tones natural (not waxy); red channel not crushed; no chroma bleed on edges |
 | A4 | Avatar (2009) | ~01:01:00–01:06:00 (~38–41%) (Jake's first night in the Pandoran forest) | Full-frame IMAX 1.78:1 (no AR shifts — auto-crops cleanly); sustained Na'vi dialogue with forced English subs; bioluminescent flora gradients in near-black backgrounds; fine CGI detail | Auto-crop removes black bars without touching picture; Na'vi forced subs burned in and legible; glowing flora gradients banding-free; no blocking in dark jungle; fine creature detail preserved |
+| A5 | The Batman (2022) | ~00:01:30–00:03:00 (~1–2%) (rooftop POV intro) | **Grain regression test** for the Patch C1-revised change (`VideoOptionExtra` reduced from `aq-mode=3:psy-rdoq=2.0` to `aq-mode=3`). Heavy uniform film grain over slow camera moves — the worst case for grain strobing under aq-mode=3 + tune=grain. | Compare a fresh encode against the prior `aq-mode=3:psy-rdoq=2.0` encode of the same range. New encode: grain field is at least as dense (no smoothing), no visible frame-to-frame strobing/shimmering on the rooftop tiles, file size within ±10% of prior. Fail if shimmering is visible or grain looks softer. |
 
 ## Preset B — BD Archive - Variable AR
 **ONLY** for films whose aspect ratio shifts mid-film (Oppenheimer 2.20↔1.43,
@@ -78,6 +79,7 @@ subs / crop, then commit to the keeper (~1.5 hr).
 | C1 | Spirited Away | ~00:30:00–00:35:00 (~24–28%) (bathhouse interior) | Large flat color blocks; intricate background line work; soft lantern gradients | Flat color regions clean (no mosquito noise around lines); line art crisp; lantern gradients banding-free |
 | C2 | Princess Mononoke | ~00:22:00–00:27:00 (~16–20%) (forest spirits) | Subtle blue-green gradient skies; fine forest detail; glowing kodama | Sky gradients banding-free; glow effects don't ring; fine foliage not smoothed |
 | C3 | Akira | ~00:08:00–00:13:00 (~6–10%) (bike chase opening) | Fast motion; neon reds/yellows; hand-drawn motion blur; dark night cityscape | Motion blur preserved (not over-sharpened); neon saturation accurate; dark backgrounds don't block |
+| C4 | Spirited Away | ~01:15:00–01:18:00 (~62–64%) (twilight train sequence) | **Banding torture test** for tune=animation + `aq-mode=3` override. Sustained twilight sky gradient (deep blue → violet → black), reflected lantern halos on still water, near-uniform flat color regions. | Sky gradient banding-free — no visible stair-stepping on the blue→violet ramp; lantern halos smooth (no contour rings); flat water reflections clean (no posterization). Confirms `aq-mode=3` dark-bias is doing useful work on twilight content. |
 
 ---
 

@@ -2,8 +2,6 @@
 /hb_queue*
 /logs
 /pres
-
 /presets.json*
 /settings.json*
-
 /verify_bd_archive.py
