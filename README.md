@@ -87,6 +87,34 @@ identical across the entire set:
 
 ---
 
+## Result — dark-scene fidelity
+
+A representative comparison from *Dune: Part Two*. Frame grab from a sub-
+crypt scene with deep crushed shadows, a narrow shaft of warm light on
+weathered stone, and large near-black regions — the exact failure mode
+that exposes banding and blocky-blacks on weaker encoders.
+
+| Source Blu-ray | BD Archive — Standard (x265, RF 18, tune=grain) |
+|---|---|
+| ![Dune Part Two — original Blu-ray frame](images/Dune%20-%20Part%202%20-%20Original.png) | ![Dune Part Two — BD Archive preset output](images/Dune%20-%20Part%202%20-%20Archive%20Preset.png) |
+
+The encoded frame is visually indistinguishable from the source on a
+calibrated display: stone texture and chisel marks in the lit band are
+preserved, the deep shadow regions stay smooth (no contour banding, no
+16×16 posterization in the blackest areas), and the warm-to-shadow
+falloff stays a continuous gradient. This is the bar the BD Archive
+presets are tuned to clear.
+
+**File size for that fidelity:** the source MKV rip was ~31.9 GB; the
+BD Archive — Standard re-encode came in at ~22.3 GB. That's roughly a
+**30% reduction** (compression ratio ~0.70), which is modest by
+consumer-encoding standards — most "good enough" presets push 60–80%
+reduction. That's the explicit trade-off here: quality is prioritized
+over file size. Storage is cheap; re-ripping the entire collection in
+five years because the encodes were too aggressive is not.
+
+---
+
 ## Why this design
 
 A few load-bearing decisions worth calling out, since they're the most
