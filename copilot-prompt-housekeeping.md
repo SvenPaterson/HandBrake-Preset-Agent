@@ -34,10 +34,10 @@ I will attach the current state of my preset configuration. Expect some
 or all of:
 
 - `presets.json` — the live HandBrake preset database (six BD presets at the top of Custom Presets, plus stock HandBrake presets).
-- `build_bd_archive.py` — the single-source-of-truth builder. Contains the canonical `SHARED` dict and per-preset overrides for all six presets.
-- `verify_bd_archive.py` — parity audit script.
+- `build_bd_archive.py` — the single-source-of-truth merge tool. Contains the canonical `SHARED` dict and per-preset overrides for all six presets. CLI: `--dry-run`, `--presets-dir PATH`, `--set-default`, `--no-backup`. Default behavior is non-destructive: timestamped backup of `presets.json`, merge BD presets next to existing customs, do not touch `settings.json`.
+- `verify_bd_archive.py` — parity audit script. CLI: `--presets-dir PATH`.
 - `test_scenes.md` — per-preset verification scene catalog.
-- `README.md` — repo overview describing the design intent.
+- `README.md` — repo overview describing the design intent and install paths.
 - `logs/` — recent HandBrake activity logs from real encodes.
 
 Treat `build_bd_archive.py` as authoritative for "what the preset set is
@@ -140,13 +140,19 @@ For every approved A/B/C change, show the exact edit to
 
 - If the change goes in the `SHARED` dict, show the dict key and new
   value.
-- If the change goes in a per-preset override, show which override block
-  and the new key/value.
+- If the change goes in a per-preset override (the `make_preset` /
+  `make_nvenc_preset` calls or the functions themselves), show which
+  override block and the new key/value.
 - If the change requires a new override block (e.g. a new field that only
   applies to NVENC presets), show the full block.
+- If the change touches the merge logic itself (new legacy entry to
+  remove, new schema version to accept in `TESTED_SCHEMA`, new CLI
+  flag), show the edit to the relevant function (`plan_changes`,
+  `apply_changes`, `check_schema`, `main`).
 
 Do not edit `presets.json` directly in your patch plan. The builder is
-the source of truth; `presets.json` is regenerated from it.
+the source of truth; `presets.json` is regenerated from it via
+`python build_bd_archive.py` (preview with `--dry-run` first).
 
 ### Step 5 — Verification updates
 

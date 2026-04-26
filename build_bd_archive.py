@@ -1,17 +1,55 @@
 """
-One-shot builder: insert "BD Archive" folder with 3 presets into presets.json,
-remove "x265 Archive Film", flip "GPU H.265 to MKV".Default to false,
-update settings.json defaultPreset and PresetExpandedStateList.
+Merge the BD Archive / BD Casual preset set into a HandBrake config.
 
-Run from the HandBrake user data folder.
+Safe by default for third-party users:
+  * Auto-detects the HandBrake config dir per OS (override with --presets-dir).
+  * Writes a timestamped backup before mutating anything.
+  * Only touches BD-prefixed presets and the legacy entries this script
+    originally replaced. Your other custom presets are left alone.
+  * Does NOT modify settings.json unless --set-default is passed.
+  * --dry-run prints the planned changes without writing.
+
+Usage:
+    python build_bd_archive.py                  # safe merge into detected dir
+    python build_bd_archive.py --dry-run        # preview only, no writes
+    python build_bd_archive.py --presets-dir PATH
+    python build_bd_archive.py --set-default    # also point HandBrake's
+                                                # default preset at
+                                                # 'BD Archive — Standard'
+    python build_bd_archive.py --no-backup      # skip the .bak-* backup
 """
-import json
+import argparse
 import copy
+import json
+import os
+import platform
+import sys
+from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(__file__).parent
-PRESETS = ROOT / "presets.json"
-SETTINGS = ROOT / "settings.json"
+# Force UTF-8 on stdout/stderr so preset names (which contain em-dash) and
+# arrow glyphs in progress output don't crash on Windows cp1252 consoles.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+# Tested HandBrake schema range. Outside this we warn but proceed.
+# 72 corresponds to HandBrake 1.10.x / 1.11.x (current as of April 2026).
+TESTED_SCHEMA = {"VersionMajor": (72, 72), "VersionMinor": (0, 0)}
+
+
+def default_handbrake_dir() -> Path:
+    """Return the canonical HandBrake config directory for the current OS."""
+    system = platform.system()
+    if system == "Windows":
+        appdata = os.environ.get("APPDATA")
+        if not appdata:
+            raise RuntimeError("%APPDATA% not set; pass --presets-dir explicitly.")
+        return Path(appdata) / "HandBrake"
+    if system == "Darwin":
+        return Path.home() / "Library" / "Application Support" / "HandBrake"
+    # Linux / other Unix — ghb is HandBrake's GTK frontend's config name
+    return Path.home() / ".config" / "ghb"
 
 # ---------- Canonical SHARED settings (single source of truth) ----------
 SHARED = {
@@ -263,61 +301,203 @@ preset_f = make_nvenc_preset(
                 "gradients vs x265 tune=animation keeper.",
 )
 
-# ---------- Mutate presets.json ----------
-# NOTE: HandBrake 1.11 Windows GUI does NOT support nested folders inside
-# "Custom Presets" — it silently strips the wrapper folder and rewrites the
-# file on next launch. So we place the 6 presets flat at the top level of
-# Custom Presets. The "BD Archive — " / "BD Casual — " name prefixes group
-# them visually.
-data = json.loads(PRESETS.read_text(encoding="utf-8"))
+# ---------- Merge logic (shared by --dry-run and real run) ----------
 
-custom = next(p for p in data["PresetList"]
-              if p.get("Folder") and p.get("PresetName") == "Custom Presets")
+BD_PRESETS = [preset_a, preset_b, preset_c, preset_d, preset_e, preset_f]
+BD_NAMES = [p["PresetName"] for p in BD_PRESETS]
+LEGACY_NAMES = ("x265 Archive Film", "BD Archive")  # old wrapper folder + earlier preset
 
-# Remove any prior "x265 Archive Film" or stale "BD Archive" wrapper folder
-before = len(custom["ChildrenArray"])
-custom["ChildrenArray"] = [
-    e for e in custom["ChildrenArray"]
-    if e.get("PresetName") not in ("x265 Archive Film", "BD Archive")
-    and not (e.get("Folder") and e.get("PresetName", "").startswith(("BD Archive", "BD Casual")))
-]
-# Also remove any pre-existing flat BD Archive / BD Casual presets (idempotency)
-custom["ChildrenArray"] = [
-    e for e in custom["ChildrenArray"]
-    if not (not e.get("Folder")
-            and e.get("PresetName", "").startswith(("BD Archive — ", "BD Casual — ")))
-]
-print(f"Removed {before - len(custom['ChildrenArray'])} stale entries.")
 
-# Flip GPU H.265 to MKV default off (no-op if already false)
-for e in custom["ChildrenArray"]:
-    if e.get("PresetName") == "GPU H.265 to MKV" and e.get("Default") is True:
-        e["Default"] = False
-        print("Flipped 'GPU H.265 to MKV'.Default -> false")
+def ensure_custom_presets_folder(data: dict) -> dict:
+    """Find the 'Custom Presets' folder; create it if missing."""
+    for p in data.get("PresetList", []):
+        if p.get("Folder") and p.get("PresetName") == "Custom Presets":
+            return p
+    folder = {
+        "PresetName": "Custom Presets",
+        "Folder": True,
+        "FolderOpen": True,
+        "Type": 0,
+        "ChildrenArray": [],
+    }
+    data.setdefault("PresetList", []).append(folder)
+    print("Note: 'Custom Presets' folder was missing; created it.")
+    return folder
 
-# Append the 6 presets flat (3 BD Archive x265 keepers + 3 BD Casual NVENC siblings)
-custom["ChildrenArray"].extend([preset_a, preset_b, preset_c, preset_d, preset_e, preset_f])
 
-PRESETS.write_text(
-    json.dumps(data, indent=2, ensure_ascii=False) + "\n",
-    encoding="utf-8",
-)
-print(f"presets.json: 6 BD Archive/Casual presets placed flat in Custom Presets. "
-      f"Custom Presets.ChildrenArray length: {len(custom['ChildrenArray'])}")
+def plan_changes(custom: dict) -> dict:
+    """Return a dict describing what would change (used by both modes)."""
+    children = custom.get("ChildrenArray", [])
+    to_remove_legacy_folder = [
+        e["PresetName"] for e in children
+        if e.get("Folder") and e.get("PresetName", "").startswith(("BD Archive", "BD Casual"))
+    ]
+    to_remove_legacy_preset = [
+        e["PresetName"] for e in children
+        if e.get("PresetName") in LEGACY_NAMES
+    ]
+    to_remove_existing_bd = [
+        e["PresetName"] for e in children
+        if not e.get("Folder")
+        and e.get("PresetName", "").startswith(("BD Archive \u2014 ", "BD Casual \u2014 "))
+    ]
+    will_flip_gpu_default = any(
+        e.get("PresetName") == "GPU H.265 to MKV" and e.get("Default") is True
+        for e in children
+    )
+    surviving = [
+        e["PresetName"] for e in children
+        if e.get("PresetName") not in to_remove_legacy_folder
+        and e.get("PresetName") not in to_remove_legacy_preset
+        and e.get("PresetName") not in to_remove_existing_bd
+    ]
+    return {
+        "remove": to_remove_legacy_folder + to_remove_legacy_preset + to_remove_existing_bd,
+        "add": BD_NAMES,
+        "flip_gpu_default": will_flip_gpu_default,
+        "surviving_user_presets": [n for n in surviving if n != "GPU H.265 to MKV"],
+    }
 
-# ---------- Mutate settings.json ----------
-settings = json.loads(SETTINGS.read_text(encoding="utf-8"))
-old_default = settings.get("defaultPreset", "")
-settings["defaultPreset"] = "BD Archive — Standard"
 
-expanded = settings.get("PresetExpandedStateList", [])
-# Remove obsolete "BD Archive" wrapper-folder entry if present
-expanded = [x for x in expanded if x != "BD Archive"]
-settings["PresetExpandedStateList"] = expanded
+def apply_changes(custom: dict) -> None:
+    """Mutate custom['ChildrenArray'] in place per plan_changes()."""
+    children = custom.get("ChildrenArray", [])
+    children = [
+        e for e in children
+        if e.get("PresetName") not in LEGACY_NAMES
+        and not (e.get("Folder") and e.get("PresetName", "").startswith(("BD Archive", "BD Casual")))
+    ]
+    children = [
+        e for e in children
+        if not (not e.get("Folder")
+                and e.get("PresetName", "").startswith(("BD Archive \u2014 ", "BD Casual \u2014 ")))
+    ]
+    for e in children:
+        if e.get("PresetName") == "GPU H.265 to MKV" and e.get("Default") is True:
+            e["Default"] = False
+    children.extend(BD_PRESETS)
+    custom["ChildrenArray"] = children
 
-SETTINGS.write_text(
-    json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
-    encoding="utf-8",
-)
-print(f"settings.json: defaultPreset '{old_default}' -> "
-      f"'{settings['defaultPreset']}', PresetExpandedStateList now: {expanded}")
+
+def check_schema(data: dict) -> None:
+    major = data.get("VersionMajor")
+    minor = data.get("VersionMinor")
+    if major is None:
+        print("Warning: presets.json has no VersionMajor field; schema unknown.")
+        return
+    lo, hi = TESTED_SCHEMA["VersionMajor"]
+    if not (lo <= major <= hi):
+        print(f"Warning: presets.json VersionMajor={major} is outside tested range "
+              f"{lo}\u2013{hi}. Proceeding, but field names may have shifted.")
+
+
+def backup(path: Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    dest = path.with_name(path.name + f".bak-{stamp}")
+    dest.write_bytes(path.read_bytes())
+    return dest
+
+
+# ---------- CLI ----------
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Merge BD Archive / BD Casual presets into a HandBrake config.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "--presets-dir", type=Path, default=None,
+        help="HandBrake config directory (default: auto-detect per OS).",
+    )
+    parser.add_argument(
+        "--set-default", action="store_true",
+        help="Also write settings.json: set defaultPreset to 'BD Archive \u2014 Standard' "
+             "and clean PresetExpandedStateList. Off by default.",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Print planned changes without writing any files.",
+    )
+    parser.add_argument(
+        "--no-backup", action="store_true",
+        help="Skip the timestamped .bak-* backup before writing.",
+    )
+    args = parser.parse_args(argv)
+
+    config_dir = args.presets_dir or default_handbrake_dir()
+    presets_path = config_dir / "presets.json"
+    settings_path = config_dir / "settings.json"
+
+    if not presets_path.exists():
+        print(f"ERROR: presets.json not found at {presets_path}", file=sys.stderr)
+        print("Launch HandBrake at least once, or pass --presets-dir.", file=sys.stderr)
+        return 2
+
+    print(f"HandBrake config dir: {config_dir}")
+    data = json.loads(presets_path.read_text(encoding="utf-8"))
+    check_schema(data)
+    custom = ensure_custom_presets_folder(data)
+    plan = plan_changes(custom)
+
+    print("\n=== Planned changes to presets.json ===")
+    print(f"  Remove ({len(plan['remove'])}): {plan['remove'] or 'none'}")
+    print(f"  Add    ({len(plan['add'])}): {plan['add']}")
+    if plan["flip_gpu_default"]:
+        print("  Flip 'GPU H.265 to MKV'.Default \u2192 false")
+    print(f"  Preserved user presets ({len(plan['surviving_user_presets'])}): "
+          f"{plan['surviving_user_presets'] or 'none'}")
+
+    if args.set_default:
+        if settings_path.exists():
+            s = json.loads(settings_path.read_text(encoding="utf-8"))
+            print("\n=== Planned changes to settings.json ===")
+            print(f"  defaultPreset: {s.get('defaultPreset', '')!r} "
+                  f"\u2192 'BD Archive \u2014 Standard'")
+            obs = [x for x in s.get("PresetExpandedStateList", []) if x == "BD Archive"]
+            if obs:
+                print("  Remove obsolete 'BD Archive' from PresetExpandedStateList")
+        else:
+            print(f"\nWarning: --set-default given but {settings_path} doesn't exist; skipping.")
+
+    if args.dry_run:
+        print("\nDry run \u2014 no files written.")
+        return 0
+
+    # Real write path.
+    if not args.no_backup:
+        bak = backup(presets_path)
+        print(f"\nBacked up presets.json \u2192 {bak.name}")
+
+    apply_changes(custom)
+    presets_path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(f"Wrote {presets_path} (Custom Presets.ChildrenArray length: "
+          f"{len(custom['ChildrenArray'])})")
+
+    if args.set_default and settings_path.exists():
+        if not args.no_backup:
+            bak = backup(settings_path)
+            print(f"Backed up settings.json \u2192 {bak.name}")
+        s = json.loads(settings_path.read_text(encoding="utf-8"))
+        old_default = s.get("defaultPreset", "")
+        s["defaultPreset"] = "BD Archive \u2014 Standard"
+        s["PresetExpandedStateList"] = [
+            x for x in s.get("PresetExpandedStateList", []) if x != "BD Archive"
+        ]
+        settings_path.write_text(
+            json.dumps(s, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        print(f"Wrote {settings_path} (defaultPreset: {old_default!r} \u2192 "
+              f"{s['defaultPreset']!r})")
+
+    print("\nDone. Restart HandBrake to see the new presets.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+

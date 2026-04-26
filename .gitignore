@@ -2,12 +2,8 @@
 /hb_queue*
 /logs
 /pres
-/presets.json.72_0_0.archive
-/presets.json.backup
-/presets.json.bak-20260424-163542
-/presets.json.bak-20260425-163907
-/settings.json
-/settings.json.backup
-/settings.json.bak-20260424-163542
-/settings.json.bak-20260425-163907
+
+/presets.json*
+/settings.json*
+
 /verify_bd_archive.py

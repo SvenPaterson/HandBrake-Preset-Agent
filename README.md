@@ -1,27 +1,139 @@
 # HandBrake-Preset-Agent
 
-## HandBrake BD Archive / BD Casual Presets
-
 A matched set of six HandBrake presets for ripping a personal Blu-ray
-collection: three **archival-quality x265 keepers** and three **NVENC GPU
-siblings** for fast validation passes and low-priority content. Plus the
-Python tooling that builds and verifies them so the "shared" settings stay
-truly shared, and a pair of LLM prompts (initial-build + ongoing
-housekeeping) that act as the "agent" half of the workflow — review the
-preset set against the latest HandBrake / x265 / NVENC releases and
-propose targeted updates.
+collection — three **archival-quality x265 keepers** and three **NVENC GPU
+siblings** — plus the Python tooling that builds and verifies them and a
+pair of LLM prompts that act as the "agent" half of the workflow
+(initial design + ongoing maintenance against new HandBrake / x265 / NVENC
+releases).
 
-**Priority is Quality over File Size**
+**Priority is quality over file size.** A typical Blu-ray rip lands ~30%
+smaller than the source MKV (vs. the 60–80% reduction most consumer
+presets push). Storage is cheap; re-ripping the collection in five years
+because the encodes were too aggressive is not.
 
- I'm a fan of the 80/20 rule so bear in mind that the vast majority of this 
- has been vibe-coded so I could knock it out over a weekend. I welcome any 
- and all suggestions to improve upon compression ratio without sacrificing 
- quality!
+> Most of this was vibe-coded over a weekend in the spirit of the 80/20
+> rule. Suggestions for improving the compression ratio without sacrificing
+> quality are very welcome.
 
-This repo is the configuration directory contents from
-`%AppData%\HandBrake` (Windows). It is published so other people building
-archival rip workflows can crib from the design — copy the JSON into your
-own `presets.json` or import it through the HandBrake GUI.
+## Result — dark-scene fidelity
+
+A representative comparison from *Dune: Part Two*. A sub-crypt scene with
+deep crushed shadows, a narrow shaft of warm light on weathered stone, and
+large near-black regions — the exact failure mode that exposes banding and
+blocky-blacks on weaker encoders.
+
+| Source Blu-ray | BD Archive — Standard (x265, RF 18, tune=grain) |
+|---|---|
+| <img src="images/Dune%20-%20Part%202%20-%20Original.png" alt="Dune Part Two — original Blu-ray frame" width="450"> | <img src="images/Dune%20-%20Part%202%20-%20Archive%20Preset.png" alt="Dune Part Two — BD Archive preset output" width="450"> |
+
+The encoded frame is visually indistinguishable from the source on a
+calibrated display: stone texture and chisel marks in the lit band are
+preserved, the deep shadow regions stay smooth (no contour banding, no
+16×16 posterization in the blackest areas), and the warm-to-shadow
+falloff stays a continuous gradient. Source ~31.9 GB → output ~22.3 GB.
+
+---
+
+## Quick start
+
+Clone this repo, then preview what would change in your HandBrake config
+before touching anything:
+
+```powershell
+python build_bd_archive.py --dry-run
+```
+
+No files are written. The script auto-detects your HandBrake config
+directory, lists the six presets it would add, the legacy entries it
+would remove, and (importantly) the existing custom presets it would
+**preserve untouched**. If the plan looks right, drop `--dry-run` to
+apply it.
+
+---
+
+## Install — adding these presets to your HandBrake
+
+Four options, in increasing power. Quit HandBrake first — it overwrites
+`presets.json` on exit, which can clobber edits made while it's running.
+
+**HandBrake's config folder lives at:**
+
+| OS | Path |
+|---|---|
+| Windows | `%AppData%\HandBrake\` |
+| macOS | `~/Library/Application Support/HandBrake/` |
+| Linux | `~/.config/ghb/` |
+
+### Option A — Import via the HandBrake GUI (zero-friction, non-destructive)
+
+No scripts, no Python.
+
+1. Download [presets.json](presets.json) from this repo.
+2. In HandBrake: **Presets** menu → **Import** → select the downloaded file.
+3. The six BD presets appear in your Custom Presets list next to anything you already have.
+
+If you only want the BD presets (not the stock HandBrake presets bundled
+in this file), open the downloaded `presets.json` in a text editor and
+delete every preset block except the six whose `PresetName` starts with
+`BD Archive —` or `BD Casual —`, then import.
+
+### Option B — Run the merge script (recommended for power users)
+
+Safe by default: auto-backs-up your `presets.json` with a timestamp,
+merges the six BD presets next to your existing customs, leaves
+`settings.json` alone unless you ask otherwise.
+
+```powershell
+git clone https://github.com/<you>/HandBrake-Preset-Agent.git
+cd HandBrake-Preset-Agent
+
+python build_bd_archive.py --dry-run    # preview, write nothing
+python build_bd_archive.py              # backup + merge
+python verify_bd_archive.py             # confirm parity across the set
+```
+
+Useful flags:
+
+| Flag | Effect |
+|---|---|
+| `--dry-run` | Print planned changes, write nothing. |
+| `--presets-dir PATH` | Override the auto-detected HandBrake config dir. |
+| `--set-default` | Also set HandBrake's default preset to `BD Archive — Standard`. Off by default. |
+| `--no-backup` | Skip the timestamped `.bak-*` backup. Not recommended. |
+
+Rollback (if something looks wrong):
+
+```powershell
+Copy-Item "$env:APPDATA\HandBrake\presets.json.bak-YYYYMMDD-HHMMSS" `
+          "$env:APPDATA\HandBrake\presets.json" -Force
+```
+
+### Option C — Replace your entire HandBrake config
+
+> **Warning:** `presets.json` is HandBrake's *entire* preset database —
+> stock presets, your custom presets, folder structure, and the
+> "default preset" pointer all live in one file. Replacing it wholesale
+> wipes any custom presets you've built. Use this only on a fresh
+> HandBrake install.
+
+1. Back up first:
+   ```powershell
+   Copy-Item "$env:APPDATA\HandBrake\presets.json"  "$env:APPDATA\HandBrake\presets.json.mybackup"
+   Copy-Item "$env:APPDATA\HandBrake\settings.json" "$env:APPDATA\HandBrake\settings.json.mybackup"
+   ```
+2. Copy this repo's [presets.json](presets.json) and (optionally)
+   [settings.json](settings.json) into the HandBrake config dir,
+   overwriting the originals.
+3. Restart HandBrake.
+
+### Option D — Fork the design
+
+If you want to change the preset set itself (different RF, different
+tune, different audio behavior), edit the `SHARED` dict and per-preset
+overrides in [build_bd_archive.py](build_bd_archive.py), then run it
+against your config (Option B). The script is the single source of
+truth; `presets.json` is regenerated from it.
 
 ---
 
@@ -99,34 +211,6 @@ identical across the entire set:
 
 ---
 
-## Result — dark-scene fidelity
-
-A representative comparison from *Dune: Part Two*. Frame grab from a sub-
-crypt scene with deep crushed shadows, a narrow shaft of warm light on
-weathered stone, and large near-black regions — the exact failure mode
-that exposes banding and blocky-blacks on weaker encoders.
-
-| Source Blu-ray | BD Archive — Standard (x265, RF 18, tune=grain) |
-|---|---|
-| <img src="images/Dune%20-%20Part%202%20-%20Original.png" alt="Dune Part Two — original Blu-ray frame" width="450"> | <img src="images/Dune%20-%20Part%202%20-%20Archive%20Preset.png" alt="Dune Part Two — BD Archive preset output" width="450"> |
-
-The encoded frame is visually indistinguishable from the source on a
-calibrated display: stone texture and chisel marks in the lit band are
-preserved, the deep shadow regions stay smooth (no contour banding, no
-16×16 posterization in the blackest areas), and the warm-to-shadow
-falloff stays a continuous gradient. This is the bar the BD Archive
-presets are tuned to clear.
-
-**File size for that fidelity:** the source MKV rip was ~31.9 GB; the
-BD Archive — Standard re-encode came in at ~22.3 GB. That's roughly a
-**30% reduction** (compression ratio ~0.70), which is modest by
-consumer-encoding standards — most "good enough" presets push 60–80%
-reduction. That's the explicit trade-off here: quality is prioritized
-over file size. Storage is cheap; re-ripping the entire collection in
-five years because the encodes were too aggressive is not.
-
----
-
 ## Why this design
 
 A few load-bearing decisions worth calling out, since they're the most
@@ -174,13 +258,14 @@ common things people argue about:
 **To rebuild the presets after editing `build_bd_archive.py`:**
 
 ```powershell
-cd $env:APPDATA\HandBrake
-python build_bd_archive.py
-python verify_bd_archive.py
+python build_bd_archive.py --dry-run    # preview
+python build_bd_archive.py              # backup + merge
+python verify_bd_archive.py             # parity audit
 ```
 
-The builder writes a timestamped backup of `presets.json` and `settings.json`
-before patching, so it's safe to rerun.
+The builder writes a timestamped backup of `presets.json` before
+mutating, so it's safe to rerun. `settings.json` is only touched if you
+pass `--set-default`.
 
 **To rip a Blu-ray:**
 
@@ -199,13 +284,15 @@ catalog.
 
 ## Compatibility
 
-- HandBrake **1.9.x / 1.10.x** (current stable as of 2026). The JSON
-  schema occasionally adds fields between minor versions; the builder is
-  conservative and only sets fields HandBrake recognizes.
-- Windows paths assumed in the helper scripts (`%AppData%\HandBrake`).
-  Trivially portable to macOS (`~/Library/Application Support/HandBrake`)
-  or Linux (`~/.config/ghb`) — adjust the path constants at the top of
-  each script.
+- HandBrake **1.10.x / 1.11.x** (current stable as of April 2026,
+  presets schema `VersionMajor: 72`). The merge script warns but
+  proceeds if it sees an unrecognized schema version.
+- Cross-platform: the helper scripts auto-detect the HandBrake config
+  dir per OS (Windows `%APPDATA%\HandBrake`, macOS
+  `~/Library/Application Support/HandBrake`, Linux `~/.config/ghb`).
+  Override with `--presets-dir` for non-default installs.
+- Python 3.9+ (uses `pathlib`, `argparse`, f-strings; no third-party
+  dependencies).
 
 ---
 
