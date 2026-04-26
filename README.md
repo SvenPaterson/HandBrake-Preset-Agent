@@ -19,9 +19,10 @@ own `presets.json` or import it through the HandBrake GUI.
 |---|---|
 | [presets.json](presets.json) | The live HandBrake preset database (all six BD presets live in the `BD Archive` folder, plus stock HandBrake presets). |
 | [settings.json](settings.json) | HandBrake app settings (default preset, expanded folders). |
-| [build_bd_archive.py](build_bd_archive.py) | Single-source-of-truth builder. Reconstructs the BD Archive folder from one `SHARED` dict + per-preset overrides, then patches it into `presets.json`. Run this when you want to change a shared setting across all six presets at once. |
+| [build_bd_archive.py](build_bd_archive.py) | Single-source-of-truth builder. Reconstructs the six BD presets from one `SHARED` dict + per-preset overrides, then patches them into `presets.json`. Run this when you want to change a shared setting across all six presets at once. |
 | [verify_bd_archive.py](verify_bd_archive.py) | Audits the live `presets.json` to confirm the six presets only differ along the permitted axes (cropping, encoder backend, tune, RF). Fails loudly if drift creeps in. |
-| [copilot-prompt-v3.md](copilot-prompt-v3.md) | The design spec / LLM prompt that defines the relationship model between the presets. Read this first if you want to understand *why* the presets are shaped the way they are. |
+| [copilot-prompt-v3.md](copilot-prompt-v3.md) | **Initial build prompt.** The design spec used with an LLM to originally produce the preset set from scratch. Defines the relationship model. Read this first if you want to understand *why* the presets are shaped the way they are. |
+| [copilot-prompt-housekeeping.md](copilot-prompt-housekeeping.md) | **Ongoing maintenance prompt.** Run this against the current `presets.json` periodically (new HandBrake version, new x265/NVENC build, new flags) to audit the existing presets and propose targeted updates without re-deriving the design from scratch. |
 | [test_scenes.md](test_scenes.md) | Reference Blu-ray scenes for verifying each preset (banding torture tests, IMAX aspect-ratio shifts, forced-subtitle behavior, audio passthru). |
 | [current_preset.json](current_preset.json) | Scratch export of whatever preset I'm currently editing. Not authoritative. |
 | `*.archive`, `*.bak-*` | Timestamped backups of prior `presets.json` / `settings.json` states. |
@@ -31,9 +32,10 @@ own `presets.json` or import it through the HandBrake GUI.
 
 ## The six presets
 
-All six live in a `BD Archive` folder inside HandBrake. They split along
-two axes: **encoder backend** (x265 keeper vs NVENC sibling) and
-**content type** (standard / variable AR / 2D animation).
+All six live at the top level of HandBrake's Custom Presets list (no
+subfolder). They split along two axes: **encoder backend** (x265 keeper vs
+NVENC sibling) and **content type** (standard / variable AR / 2D
+animation).
 
 ### BD Archive (x265 keepers)
 
