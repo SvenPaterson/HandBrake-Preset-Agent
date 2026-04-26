@@ -1,4 +1,4 @@
-# HandBrake Archival Preset Set — Evaluation, Rebuild, and Sync
+﻿# HandBrake Archival Preset Set — Evaluation, Rebuild, and Sync
 
 ## Role
 
@@ -12,20 +12,20 @@ I already have existing preset JSON file(s) that I will attach. I want you to ev
 
 ## The three presets
 
-**Preset A: "BD Archive — Standard"**
+**Preset A: "BD Archive - Standard"**
 - For live-action films and modern 3D CGI animation (Pixar, modern Disney, DreamWorks, Illumination, Sony Animation, etc.)
 - Also used for films with visible grain, dark-heavy content, horror, noir, classic films
 - Automatic cropping enabled — HandBrake removes black bars during encoding
 - Tune: grain
 - Use case: ~85% of a typical modern Blu-ray library
 
-**Preset B: "BD Archive — IMAX/Variable"**
+**Preset B: "BD Archive - IMAX/Variable"**
 - For films with variable aspect ratio scenes (IMAX Enhanced releases, partially-IMAX-shot films like Oppenheimer, The Dark Knight, Dunkirk, recent MCU titles, recent Mission: Impossible titles)
 - Cropping disabled — preserves source framing exactly, including black bars, so IMAX expansion scenes render correctly
 - Tune: grain (same as Preset A)
 - Use case: identified per-disc when I confirm IMAX content is present
 
-**Preset C: "BD Archive — Animation 2D"**
+**Preset C: "BD Archive - Animation 2D"**
 - For traditional hand-drawn / cel animation: Studio Ghibli, classic Disney (pre-Tangled), hand-drawn anime, flat-shaded adult animation
 - NOT for modern 3D CGI animation — that uses Preset A
 - Automatic cropping enabled (traditional 2D animation on Blu-ray is fixed aspect ratio)

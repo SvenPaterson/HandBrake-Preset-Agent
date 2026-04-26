@@ -1,4 +1,4 @@
-"""
+﻿"""
 Merge the BD Archive / BD Casual preset set into a HandBrake config.
 
 Safe by default for third-party users:
@@ -15,7 +15,7 @@ Usage:
     python build_bd_archive.py --presets-dir PATH
     python build_bd_archive.py --set-default    # also point HandBrake's
                                                 # default preset at
-                                                # 'BD Archive — Standard'
+                                                # 'BD Archive - Standard'
     python build_bd_archive.py --no-backup      # skip the .bak-* backup
 """
 import argparse
@@ -240,7 +240,7 @@ def make_nvenc_preset(name, *, crop_mode, cq, description=""):
 
 
 preset_a = make_preset(
-    "BD Archive — Standard",
+    "BD Archive - Standard",
     crop_mode=0,  # Automatic
     tune="grain",
     rf=18,
@@ -252,7 +252,7 @@ preset_a = make_preset(
                 "black bars without touching active picture.",
 )
 preset_b = make_preset(
-    "BD Archive — Variable AR",
+    "BD Archive - Variable AR",
     crop_mode=2,  # None — preserves source framing for AR-shifting (IMAX) content
     tune="grain",
     rf=18,
@@ -263,7 +263,7 @@ preset_b = make_preset(
                 "2.20↔1.90). Auto-crop would chop the IMAX expansion frames.",
 )
 preset_c = make_preset(
-    "BD Archive — Animation 2D",
+    "BD Archive - Animation 2D",
     crop_mode=0,  # Automatic
     tune="animation",
     rf=19,
@@ -274,7 +274,7 @@ preset_c = make_preset(
                 "skies / lantern gradients (Ghibli, anime night scenes).",
 )
 preset_d = make_nvenc_preset(
-    "BD Casual — Standard (NVENC)",
+    "BD Casual - Standard (NVENC)",
     crop_mode=0,  # Automatic — mirrors Preset A
     cq=22,        # ~ x265 RF 18 perceptual target
     description="GPU NVENC HEVC 10-bit, slowest, CQ 22, auto-crop. "
@@ -282,7 +282,7 @@ preset_d = make_nvenc_preset(
                 "per Blu-ray. Visible banding on dark gradients vs x265 keeper.",
 )
 preset_e = make_nvenc_preset(
-    "BD Casual — Variable AR (NVENC)",
+    "BD Casual - Variable AR (NVENC)",
     crop_mode=2,  # None — mirrors Preset B
     cq=22,
     description="GPU NVENC HEVC 10-bit, slowest, CQ 22, NO crop. "
@@ -292,7 +292,7 @@ preset_e = make_nvenc_preset(
                 "(confirmed on Avatar 2009 cryosleep / Tree of Souls).",
 )
 preset_f = make_nvenc_preset(
-    "BD Casual — Animation 2D (NVENC)",
+    "BD Casual - Animation 2D (NVENC)",
     crop_mode=0,  # Automatic — mirrors Preset C
     cq=23,        # Animation tolerates slightly higher CQ
     description="GPU NVENC HEVC 10-bit, slowest, CQ 23, auto-crop. "
@@ -306,6 +306,13 @@ preset_f = make_nvenc_preset(
 BD_PRESETS = [preset_a, preset_b, preset_c, preset_d, preset_e, preset_f]
 BD_NAMES = [p["PresetName"] for p in BD_PRESETS]
 LEGACY_NAMES = ("x265 Archive Film", "BD Archive")  # old wrapper folder + earlier preset
+# Prefixes to clean up on every run. Both the new hyphen form and the legacy
+# em-dash form (used in installs prior to April 2026) are removed so users
+# upgrading from earlier versions of this script don't end up with duplicates.
+BD_PRESET_PREFIXES = (
+    "BD Archive - ", "BD Casual - ",
+    "BD Archive \u2014 ", "BD Casual \u2014 ",
+)
 
 
 def ensure_custom_presets_folder(data: dict) -> dict:
@@ -339,7 +346,7 @@ def plan_changes(custom: dict) -> dict:
     to_remove_existing_bd = [
         e["PresetName"] for e in children
         if not e.get("Folder")
-        and e.get("PresetName", "").startswith(("BD Archive \u2014 ", "BD Casual \u2014 "))
+        and e.get("PresetName", "").startswith(BD_PRESET_PREFIXES)
     ]
     will_flip_gpu_default = any(
         e.get("PresetName") == "GPU H.265 to MKV" and e.get("Default") is True
@@ -370,7 +377,7 @@ def apply_changes(custom: dict) -> None:
     children = [
         e for e in children
         if not (not e.get("Folder")
-                and e.get("PresetName", "").startswith(("BD Archive \u2014 ", "BD Casual \u2014 ")))
+                and e.get("PresetName", "").startswith(BD_PRESET_PREFIXES))
     ]
     for e in children:
         if e.get("PresetName") == "GPU H.265 to MKV" and e.get("Default") is True:
@@ -412,7 +419,7 @@ def main(argv=None) -> int:
     )
     parser.add_argument(
         "--set-default", action="store_true",
-        help="Also write settings.json: set defaultPreset to 'BD Archive \u2014 Standard' "
+        help="Also write settings.json: set defaultPreset to 'BD Archive - Standard' "
              "and clean PresetExpandedStateList. Off by default.",
     )
     parser.add_argument(
@@ -435,7 +442,9 @@ def main(argv=None) -> int:
         return 2
 
     print(f"HandBrake config dir: {config_dir}")
-    data = json.loads(presets_path.read_text(encoding="utf-8"))
+    # utf-8-sig tolerates a BOM that some editors / PowerShell Set-Content
+    # write; the json module rejects a BOM under plain utf-8.
+    data = json.loads(presets_path.read_text(encoding="utf-8-sig"))
     check_schema(data)
     custom = ensure_custom_presets_folder(data)
     plan = plan_changes(custom)
@@ -450,10 +459,10 @@ def main(argv=None) -> int:
 
     if args.set_default:
         if settings_path.exists():
-            s = json.loads(settings_path.read_text(encoding="utf-8"))
+            s = json.loads(settings_path.read_text(encoding="utf-8-sig"))
             print("\n=== Planned changes to settings.json ===")
             print(f"  defaultPreset: {s.get('defaultPreset', '')!r} "
-                  f"\u2192 'BD Archive \u2014 Standard'")
+                  f"\u2192 'BD Archive - Standard'")
             obs = [x for x in s.get("PresetExpandedStateList", []) if x == "BD Archive"]
             if obs:
                 print("  Remove obsolete 'BD Archive' from PresetExpandedStateList")
@@ -481,9 +490,9 @@ def main(argv=None) -> int:
         if not args.no_backup:
             bak = backup(settings_path)
             print(f"Backed up settings.json \u2192 {bak.name}")
-        s = json.loads(settings_path.read_text(encoding="utf-8"))
+        s = json.loads(settings_path.read_text(encoding="utf-8-sig"))
         old_default = s.get("defaultPreset", "")
-        s["defaultPreset"] = "BD Archive \u2014 Standard"
+        s["defaultPreset"] = "BD Archive - Standard"
         s["PresetExpandedStateList"] = [
             x for x in s.get("PresetExpandedStateList", []) if x != "BD Archive"
         ]

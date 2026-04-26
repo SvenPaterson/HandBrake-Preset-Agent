@@ -1,4 +1,4 @@
-# HandBrake-Preset-Agent
+﻿# HandBrake-Preset-Agent
 
 A matched set of six HandBrake presets for ripping a personal Blu-ray
 collection — three **archival-quality x265 keepers** and three **NVENC GPU
@@ -23,7 +23,7 @@ deep crushed shadows, a narrow shaft of warm light on weathered stone, and
 large near-black regions — the exact failure mode that exposes banding and
 blocky-blacks on weaker encoders.
 
-| Source Blu-ray | BD Archive — Standard (x265, RF 18, tune=grain) |
+| Source Blu-ray | BD Archive - Standard (x265, RF 18, tune=grain) |
 |---|---|
 | <img src="images/Dune%20-%20Part%202%20-%20Original.png" alt="Dune Part Two — original Blu-ray frame" width="450"> | <img src="images/Dune%20-%20Part%202%20-%20Archive%20Preset.png" alt="Dune Part Two — BD Archive preset output" width="450"> |
 
@@ -99,7 +99,7 @@ Useful flags:
 |---|---|
 | `--dry-run` | Print planned changes, write nothing. |
 | `--presets-dir PATH` | Override the auto-detected HandBrake config dir. |
-| `--set-default` | Also set HandBrake's default preset to `BD Archive — Standard`. Off by default. |
+| `--set-default` | Also set HandBrake's default preset to `BD Archive - Standard`. Off by default. |
 | `--no-backup` | Skip the timestamped `.bak-*` backup. Not recommended. |
 
 Rollback (if something looks wrong):
@@ -169,9 +169,9 @@ the source on a calibrated display at normal viewing distance.
 
 | Preset | Tune | RF | Cropping | Use for |
 |---|---|---|---|---|
-| **BD Archive — Standard** | grain | 18 | Auto | Live action, modern 3D CGI animation, full-frame IMAX (Avatar) — anything with a single fixed aspect ratio. ~85% of a typical library. |
-| **BD Archive — Variable AR** | grain | 18 | **Disabled** | Films whose aspect ratio shifts mid-film: Oppenheimer (2.20↔1.43), The Dark Knight (2.40↔1.78), Dunkirk (2.20↔1.90), partial-IMAX MCU and Mission: Impossible titles. Cropping is disabled so the IMAX expansion frames render correctly. |
-| **BD Archive — Animation 2D** | animation | 19 | Auto | Hand-drawn / cel animation only: Studio Ghibli, classic pre-Tangled Disney, hand-drawn anime. `tune=animation` includes subtle banding mitigation that matters on twilight skies and lantern gradients. **Not** for modern 3D CGI — that goes on Standard. |
+| **BD Archive - Standard** | grain | 18 | Auto | Live action, modern 3D CGI animation, full-frame IMAX (Avatar) — anything with a single fixed aspect ratio. ~85% of a typical library. |
+| **BD Archive - Variable AR** | grain | 18 | **Disabled** | Films whose aspect ratio shifts mid-film: Oppenheimer (2.20↔1.43), The Dark Knight (2.40↔1.78), Dunkirk (2.20↔1.90), partial-IMAX MCU and Mission: Impossible titles. Cropping is disabled so the IMAX expansion frames render correctly. |
+| **BD Archive - Animation 2D** | animation | 19 | Auto | Hand-drawn / cel animation only: Studio Ghibli, classic pre-Tangled Disney, hand-drawn anime. `tune=animation` includes subtle banding mitigation that matters on twilight skies and lantern gradients. **Not** for modern 3D CGI — that goes on Standard. |
 
 ### BD Casual (NVENC siblings)
 
@@ -182,9 +182,9 @@ keeper.
 
 | Preset | CQ | Cropping | Use for |
 |---|---|---|---|
-| **BD Casual — Standard (NVENC)** | 22 | Auto | Validation pass on a fresh rip before committing the ~2 hr keeper, OR acceptable-quality keeper for low-priority content (TV movies, throwaway releases). |
-| **BD Casual — Variable AR (NVENC)** | 22 | Disabled | Same role as above for variable-AR titles. Also confirms the AR shifts and forced-sub burn-in behave correctly before committing the keeper. |
-| **BD Casual — Animation 2D (NVENC)** | 23 | Auto | Same role as above for 2D animation. |
+| **BD Casual - Standard (NVENC)** | 22 | Auto | Validation pass on a fresh rip before committing the ~2 hr keeper, OR acceptable-quality keeper for low-priority content (TV movies, throwaway releases). |
+| **BD Casual - Variable AR (NVENC)** | 22 | Disabled | Same role as above for variable-AR titles. Also confirms the AR shifts and forced-sub burn-in behave correctly before committing the keeper. |
+| **BD Casual - Animation 2D (NVENC)** | 23 | Auto | Same role as above for 2D animation. |
 
 The known regression vs x265 is dark-gradient banding (most visible on
 Avatar 2009 cryosleep / Tree of Souls scenes). Bright daytime live action,
