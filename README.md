@@ -2,9 +2,14 @@
 
 A matched set of six HandBrake presets for ripping a personal Blu-ray
 collection: three **archival-quality x265 keepers** and three **NVENC GPU
-siblings** for fast validation passes and low-priority content. Plus the
-Python tooling that builds and verifies them so the "shared" settings stay
+siblings** for fast validation passes and low-priority content. . Plus the 
+Python tooling that builds and verifies them so the "shared" settings stay 
 truly shared.
+
+**Priority is Quality over File Size**
+
+I welcome any and all suggestions to improve upon compression ratio without 
+sacrificing quality!
 
 This repo is the configuration directory contents from
 `%AppData%\HandBrake` (Windows). It is published so other people building
@@ -96,7 +101,7 @@ that exposes banding and blocky-blacks on weaker encoders.
 
 | Source Blu-ray | BD Archive — Standard (x265, RF 18, tune=grain) |
 |---|---|
-| ![Dune Part Two — original Blu-ray frame](images/Dune%20-%20Part%202%20-%20Original.png) | ![Dune Part Two — BD Archive preset output](images/Dune%20-%20Part%202%20-%20Archive%20Preset.png) |
+| <img src="images/Dune%20-%20Part%202%20-%20Original.png" alt="Dune Part Two — original Blu-ray frame" width="450"> | <img src="images/Dune%20-%20Part%202%20-%20Archive%20Preset.png" alt="Dune Part Two — BD Archive preset output" width="450"> |
 
 The encoded frame is visually indistinguishable from the source on a
 calibrated display: stone texture and chisel marks in the lit band are
