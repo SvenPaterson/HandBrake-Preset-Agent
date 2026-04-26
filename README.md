@@ -1,10 +1,15 @@
-# HandBrake BD Archive / BD Casual Presets
+# HandBrake-Preset-Agent
+
+## HandBrake BD Archive / BD Casual Presets
 
 A matched set of six HandBrake presets for ripping a personal Blu-ray
 collection: three **archival-quality x265 keepers** and three **NVENC GPU
-siblings** for fast validation passes and low-priority content. . Plus the 
-Python tooling that builds and verifies them so the "shared" settings stay 
-truly shared.
+siblings** for fast validation passes and low-priority content. Plus the
+Python tooling that builds and verifies them so the "shared" settings stay
+truly shared, and a pair of LLM prompts (initial-build + ongoing
+housekeeping) that act as the "agent" half of the workflow — review the
+preset set against the latest HandBrake / x265 / NVENC releases and
+propose targeted updates.
 
 **Priority is Quality over File Size**
 
@@ -24,7 +29,7 @@ own `presets.json` or import it through the HandBrake GUI.
 
 | File | Purpose |
 |---|---|
-| [presets.json](presets.json) | The live HandBrake preset database (all six BD presets live in the `BD Archive` folder, plus stock HandBrake presets). |
+| [presets.json](presets.json) | The live HandBrake preset database (all six BD presets at the top of Custom Presets, plus stock HandBrake presets). |
 | [settings.json](settings.json) | HandBrake app settings (default preset, expanded folders). |
 | [build_bd_archive.py](build_bd_archive.py) | Single-source-of-truth builder. Reconstructs the six BD presets from one `SHARED` dict + per-preset overrides, then patches them into `presets.json`. Run this when you want to change a shared setting across all six presets at once. |
 | [verify_bd_archive.py](verify_bd_archive.py) | Audits the live `presets.json` to confirm the six presets only differ along the permitted axes (cropping, encoder backend, tune, RF). Fails loudly if drift creeps in. |
