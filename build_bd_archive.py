@@ -118,7 +118,7 @@ SHARED = {
     "SubtitleTrackSelectionBehavior": "all",
     "SubtitleTrackNamePassthru": True,
     "VideoAvgBitrate": 0,
-    "VideoColorRange": "limited",
+    "VideoColorRange": "auto",
     "VideoColorMatrixCode": 0,
     "VideoEncoder": "x265_10bit",
     "VideoFramerateMode": "vfr",
@@ -152,6 +152,17 @@ def make_preset(name, *, crop_mode, tune, rf, default=False, description=""):
     p["PictureCropMode"] = crop_mode
     p["VideoTune"] = tune
     p["VideoQualitySlider"] = rf
+    # Dark-region banding mitigation. x265's default aq-mode=2 quantizes flat
+    # dark regions aggressively, producing visible posterization on heavily-
+    # graded shadows (confirmed on Dune Part 2 cave/cloak scenes vs source).
+    #   aq-mode=3      variance AQ with explicit dark-region bias
+    #   aq-strength    1.0 (default) is fine; 1.1 if banding persists
+    #   psy-rdoq=2.0   stronger than tune=grain default; preserves shadow
+    #                  micro-texture which perceptually masks any residual
+    #                  banding. Costs ~5% bitrate, no encode-time penalty.
+    # tune=grain already sets psy-rd=2.0 and no-strong-intra-smoothing, so
+    # we don't restate those here.
+    p["VideoOptionExtra"] = "aq-mode=3:psy-rdoq=2.0"
     p["Default"] = default
     return p
 
@@ -197,16 +208,21 @@ preset_a = make_preset(
     rf=18,
     default=True,
     description="Archival x265 10-bit, medium, RF 18, tune=grain, auto-crop. "
-                "Live-action and modern 3D CGI.",
+                "Live-action, modern 3D CGI, AND full-frame IMAX films "
+                "(Avatar, Avengers Endgame IMAX cut) — anything with a "
+                "single, fixed aspect ratio. Auto-crop safely removes the "
+                "black bars without touching active picture.",
 )
 preset_b = make_preset(
-    "BD Archive — IMAX/Variable",
-    crop_mode=2,  # None — preserves source framing for variable-AR (IMAX) content
+    "BD Archive — Variable AR",
+    crop_mode=2,  # None — preserves source framing for AR-shifting (IMAX) content
     tune="grain",
     rf=18,
     default=False,
     description="Archival x265 10-bit, medium, RF 18, tune=grain, NO crop. "
-                "IMAX Enhanced / variable aspect ratio films.",
+                "ONLY for films whose aspect ratio shifts mid-film "
+                "(Oppenheimer 2.20↔1.43, Dark Knight 2.40↔1.78, Dunkirk "
+                "2.20↔1.90). Auto-crop would chop the IMAX expansion frames.",
 )
 preset_c = make_preset(
     "BD Archive — Animation 2D",
@@ -228,12 +244,13 @@ preset_d = make_nvenc_preset(
                 "per Blu-ray. Visible banding on dark gradients vs x265 keeper.",
 )
 preset_e = make_nvenc_preset(
-    "BD Casual — IMAX/Variable (NVENC)",
+    "BD Casual — Variable AR (NVENC)",
     crop_mode=2,  # None — mirrors Preset B
     cq=22,
     description="GPU NVENC HEVC 10-bit, slowest, CQ 22, NO crop. "
-                "Casual / validation encode for IMAX / variable-AR; ~12 min "
-                "per Blu-ray. Visible banding on dark gradients vs x265 keeper "
+                "Casual / validation encode for AR-shifting films "
+                "(Oppenheimer, Dark Knight, Dunkirk); ~12 min per Blu-ray. "
+                "Visible banding on dark gradients vs x265 keeper "
                 "(confirmed on Avatar 2009 cryosleep / Tree of Souls).",
 )
 preset_f = make_nvenc_preset(

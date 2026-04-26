@@ -11,10 +11,10 @@ HandBrake CLI or the GUI Range selector.
 | Preset | Encoder backend | Quality target | Typical encode time (1080p, 2 hr Blu-ray) |
 |---|---|---|---|
 | BD Archive — Standard | x265 medium, tune=grain | RF 18 | ~2 hr |
-| BD Archive — IMAX/Variable | x265 medium, tune=grain | RF 18 | ~2 hr |
+| BD Archive — Variable AR | x265 medium, tune=grain | RF 18 | ~2 hr |
 | BD Archive — Animation 2D | x265 medium, tune=animation | RF 19 | ~1.5 hr |
 | BD Casual — Standard (NVENC) | NVENC HEVC 10-bit, slowest | CQ 22 | ~12 min |
-| BD Casual — IMAX/Variable (NVENC) | NVENC HEVC 10-bit, slowest | CQ 22 | ~12 min |
+| BD Casual — Variable AR (NVENC) | NVENC HEVC 10-bit, slowest | CQ 22 | ~12 min |
 | BD Casual — Animation 2D (NVENC) | NVENC HEVC 10-bit, slowest | CQ 23 | ~10 min |
 
 **BD Archive (x265)** are the keepers — archival-grade, RF tuned per content
@@ -37,28 +37,34 @@ indistinguishable from the keeper at normal viewing distance.
 ---
 
 ## Preset A — BD Archive — Standard
-Live-action and modern 3D CGI. **x265 medium, tune=grain, RF 18, auto-crop.**
-For a fresh disc, run `BD Casual — Standard (NVENC)` first (~12 min) to
-validate audio / subs / crop, then commit to the keeper (~2 hr).
+Live-action, modern 3D CGI, AND full-frame IMAX films (Avatar, Avengers Endgame
+IMAX cut) — anything with a single, fixed aspect ratio. **x265 medium,
+tune=grain, RF 18, auto-crop.** Auto-crop safely removes the black bars
+without touching active picture. For a fresh disc, run `BD Casual — Standard
+(NVENC)` first (~12 min) to validate audio / subs / crop, then commit to the
+keeper (~2 hr).
 
 | # | Title | Range | Stresses | Verify |
 |---|-------|-------|----------|--------|
 | A1 | Blade Runner 2049 | ~01:05:00–01:10:00 (~40–43%) (Wallace HQ) | Deep shadows, smooth amber gradients on rippling water, soft focus | No banding in gradients; no posterization in shadow detail; water highlights crisp |
 | A2 | The Batman (2022) | ~00:02:30–00:07:30 (~1–4%) (opening crime scene) | Intentional heavy film grain, very low key lighting, dim warm interiors | Grain texture preserved (not smoothed into mush); no blocking in dark areas; red/orange light clean |
 | A3 | Joker (2019) | ~00:33:00–00:38:00 (~27–31%) (bathroom dance) | Red-dominant lighting, sustained close-ups on skin, slow contrast ramps | Skin tones natural (not waxy); red channel not crushed; no chroma bleed on edges |
+| A4 | Avatar (2009) | ~01:01:00–01:06:00 (~38–41%) (Jake's first night in the Pandoran forest) | Full-frame IMAX 1.78:1 (no AR shifts — auto-crops cleanly); sustained Na'vi dialogue with forced English subs; bioluminescent flora gradients in near-black backgrounds; fine CGI detail | Auto-crop removes black bars without touching picture; Na'vi forced subs burned in and legible; glowing flora gradients banding-free; no blocking in dark jungle; fine creature detail preserved |
 
-## Preset B — BD Archive — IMAX/Variable
-IMAX Enhanced / variable aspect ratio. **x265 medium, tune=grain, RF 18, NO crop.**
-For a fresh disc, run `BD Casual — IMAX/Variable (NVENC)` first (~12 min,
-also confirms AR shifts and forced-sub burn-in) then commit to the keeper
-(~2 hr).
+## Preset B — BD Archive — Variable AR
+**ONLY** for films whose aspect ratio shifts mid-film (Oppenheimer 2.20↔1.43,
+Dark Knight 2.40↔1.78, Dunkirk 2.20↔1.90). Full-frame IMAX films like
+Avatar belong on Preset A — they auto-crop cleanly because there's nothing
+outside the active frame to preserve. **x265 medium, tune=grain, RF 18, NO
+crop.** For a fresh disc, run `BD Casual — Variable AR (NVENC)` first
+(~12 min, also confirms AR shifts and forced-sub burn-in) then commit to the
+keeper (~2 hr).
 
 | # | Title | Range | Stresses | Verify |
 |---|-------|-------|----------|--------|
 | B1 | Oppenheimer | ~01:50:00–01:55:00 (~61–64%) (Trinity test) | AR transitions 2.20:1 ↔ 1.43:1 IMAX; extreme bright→dark dynamic range; bright sky banding risk | Full IMAX 1.43:1 frame expands top+bottom into the black bar area; no clipping; explosion gradient banding-free |
 | B2 | The Dark Knight | ~00:01:30–00:06:30 (~1–4%) (opening bank heist) | 1.78:1 IMAX intercut with 2.40:1 standard scope | Aspect ratio toggles cleanly mid-shot; black bars appear/disappear at correct cuts |
 | B3 | Dunkirk | ~00:35:00–00:40:00 (~33–38%) (Spitfire aerial) | IMAX 1.90:1; sustained sky gradients; extreme detail in clouds and aircraft | Sky gradient banding-free; fine aircraft detail preserved; no smearing on motion |
-| B4 | Avatar (2009) | ~01:01:00–01:06:00 (~38–41%) (Jake's first night in the Pandoran forest) | IMAX 1.78:1 ↔ 2.39:1 AR shifts; sustained Na'vi dialogue with forced English subs; bioluminescent flora gradients in near-black backgrounds; fine CGI detail | AR expands cleanly into letterbox area on IMAX shots; Na'vi forced subs burned in and legible; glowing flora gradients banding-free; no blocking in dark jungle; fine creature detail preserved |
 
 ## Preset C — BD Archive — Animation 2D
 Hand-drawn / cel animation. **x265 medium, tune=animation, RF 19, auto-crop.**
@@ -77,9 +83,9 @@ subs / crop, then commit to the keeper (~1.5 hr).
 
 ## Banding hunt — BD Casual NVENC vs BD Archive x265 (Avatar 2009 dark scenes)
 
-Use these scenes to A/B `BD Casual — IMAX/Variable (NVENC)` against the
+Use these scenes to A/B `BD Casual — Standard (NVENC)` against the
 historical `GPU H.265 to MKV` output (8-bit NVENC, no AQ) and against the
-`BD Archive — IMAX/Variable` x265 keeper. Avatar 2009 is the canonical
+`BD Archive — Standard` x265 keeper. Avatar 2009 is the canonical
 banding torture test: sustained near-black backgrounds with subtle
 blue/green bioluminescent gradients and slow contrast ramps — exactly where
 8-bit NVENC posterized into "blocky blacks" historically. The new 10-bit
@@ -111,7 +117,7 @@ ramps.
 | N5 | Avatar (2009) | ~02:18:00–02:20:00 (~85–87%) (final battle, night air combat) | Fast motion + dark sky + tracer/explosion highlights | Dark sky uniform (no blocking from rate controller starving the background); explosion highlights don't ring; motion stays sharp |
 
 **Comparison method:**
-1. Encode the same range three ways: legacy `GPU H.265 to MKV`, new `BD Casual — IMAX/Variable (NVENC)`, and `BD Archive — IMAX/Variable` (x265 medium).
+1. Encode the same range three ways: legacy `GPU H.265 to MKV`, new `BD Casual — Standard (NVENC)`, and `BD Archive — Standard` (x265 medium).
 2. Open all three in mpv with `mpv --no-config file1 file2 file3` and use `_` to cycle between them at the same timestamp.
 3. Pause on a representative dark frame and pixel-peek at 2-4× zoom (`Alt++` in mpv).
 4. Expected ranking, worst → best banding handling: legacy 8-bit NVENC < BD Casual 10-bit NVENC w/ AQ < BD Archive x265 medium tune=grain. **Confirmed observation (Avatar 2009 cryosleep): even the new NVENC w/ AQ shows visible banding on dark blue gradients — this is the trade-off the BD Casual presets accept in exchange for ~10x speed.**
@@ -141,7 +147,7 @@ ramps.
 |---|------|--------|
 | D1 | VMAF / SSIM vs source | `ffmpeg -i source.mkv -i output.mkv -lavfi libvmaf -f null -` on a 60s clip. Target VMAF ≥ 96 (transparent) for x265 keepers, ≥ 94 for NVENC |
 | D2 | A/B frame compare | Extract PNGs at problem timestamps from source and output; view side-by-side |
-| D3 | Activity log diff — x265 presets | Run Standard and IMAX/Variable on the same source; diff the x265 info lines. Confirm only the auto-crop filter line differs (B has none) |
+| D3 | Activity log diff — x265 presets | Run Standard and Variable AR on the same source; diff the x265 info lines. Confirm only the auto-crop filter line differs (B has none) |
 | D4 | Activity log diff — NVENC vs x265 | Run `BD Archive — Standard` and `BD Casual — Standard (NVENC)` on the same source. Confirm encoder swap (`x265_10bit` vs `nvenc_h265_10bit`), preset swap (`medium` vs `slowest`), and that audio/subtitle/crop blocks are byte-identical |
 
 ---
