@@ -195,24 +195,26 @@ def make_preset(name, *, crop_mode, tune, rf, default=False, description=""):
     p["PictureCropMode"] = crop_mode
     p["VideoTune"] = tune
     p["VideoQualitySlider"] = rf
-    # Dark-region banding mitigation. x265's default aq-mode=2 quantizes flat
-    # dark regions aggressively, producing visible posterization on heavily-
-    # graded shadows (confirmed on Dune Part 2 cave/cloak scenes vs source).
-    #   aq-mode=3      variance AQ with explicit dark-region bias
+    # VideoOptionExtra policy:
     #
-    # We deliberately do NOT override psy-rdoq here:
-    #   * tune=grain sets psy-rdoq=10.0 by default — strong grain preservation.
-    #     Overriding it lower would silently weaken grain retention without
-    #     any benefit to the banding fix (which comes from aq-mode alone).
-    #   * tune=animation does not set psy-rdoq, leaving x265's per-preset
-    #     default. We accept that default rather than tune it blindly.
+    #   tune=grain     -> NO override. Trust x265's tune=grain defaults
+    #                     completely (aq-mode=0, psy-rd=4.0, psy-rdoq=10.0,
+    #                     --rc-grain). The previous aq-mode=3 override was
+    #                     added for Dune Part 2 dark-region banding, but the
+    #                     x265 docs explicitly warn that overriding aq-mode
+    #                     while tune=grain is active carries a strobing risk
+    #                     on heavy-grain static shots. Cleaner to trust the
+    #                     tune profile and revisit per-title only if banding
+    #                     reappears on a specific source.
     #
-    # x265 docs warn that overriding aq-mode while tune=grain is active
-    # carries a documented strobing risk on heavy-grain static shots, but
-    # tune=grain's --rc-grain ratecontrol remains active and empirically
-    # contains it on this content library. The banding fix on Dune-class
-    # shadow gradients is the higher priority.
-    p["VideoOptionExtra"] = "aq-mode=3"
+    #   tune=animation -> aq-mode=3. Animation has no grain-strobing concern
+    #                     (no grain) and benefits from explicit dark-region
+    #                     bias on twilight/lantern gradient material
+    #                     (Ghibli, anime night scenes — see test scene C4).
+    if tune == "animation":
+        p["VideoOptionExtra"] = "aq-mode=3"
+    else:
+        p["VideoOptionExtra"] = ""
     p["Default"] = default
     return p
 
